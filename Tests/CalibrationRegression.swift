@@ -42,5 +42,24 @@ struct CalibrationRegression {
         print("PASS opening/cancelling preserves saved calibration")
         print("PASS config changes keep calibration coordinates neutral")
         print("PASS ending calibration restores detector and prior running state")
+
+        var map = AppConfig.default
+        map.layout = .sides
+        map.appRules = []
+        map.slots = TapSide.allCases.flatMap { side in
+            (1...3).map { count in
+                GestureSlot(side: side, tapCount: count,
+                            actionType: count == 3 ? .lockScreen : .none, parameter: "")
+            }
+        }
+        precondition(!map.hasDistinctSideActions(bundleID: nil))
+        map.appRules = [AppRule(bundleID: "test.app", appName: "Test", slots: [
+            GestureSlot(side: .right, tapCount: 3, actionType: .copy, parameter: "")
+        ])]
+        precondition(map.hasDistinctSideActions(bundleID: "test.app"))
+        precondition(!map.hasDistinctSideActions(bundleID: "other.app"))
+        map.appRules[0].enabled = false
+        precondition(!map.hasDistinctSideActions(bundleID: "test.app"))
+        print("PASS equivalent actions merge sides; active per-app overrides stay distinct")
     }
 }

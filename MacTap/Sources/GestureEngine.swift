@@ -39,6 +39,11 @@ final class GestureEngine: ObservableObject {
             }
             .store(in: &cancellables)
 
+        NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didActivateApplicationNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.apply(ConfigStore.shared.config) }
+            .store(in: &cancellables)
+
         apply(ConfigStore.shared.config)
         SoundManager.shared.sync(from: ConfigStore.shared.config)
     }
@@ -50,6 +55,8 @@ final class GestureEngine: ObservableObject {
         detector.sideBias = isCalibrating ? 0 : config.sideBias
         detector.ignoreWhileTyping = config.ignoreWhileTyping
         detector.classifySides = isCalibrating || config.layout == .sides
+        detector.splitOnSideChange = isCalibrating || config.hasDistinctSideActions(
+            bundleID: NSWorkspace.shared.frontmostApplication?.bundleIdentifier)
     }
 
     func beginCalibration() {

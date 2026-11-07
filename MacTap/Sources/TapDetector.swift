@@ -22,7 +22,8 @@ struct DetectedGesture: Sendable, Equatable {
 
 /// Chassis-tap classifier on the undocumented SPU IMU (~800 Hz accel + gyro).
 ///
-/// Onset follows Bonk (EMA delta, no minimum width). Side follows Knocker, but
+/// Onset uses a fast two-stage high-pass signal to separate fresh contacts
+/// from the chassis' long low-frequency resonance. Side follows Knocker, but
 /// at native 800 Hz we can do better: only the attack (~30 ms) counts, the
 /// pre-tap X baseline is subtracted so gravity leak cannot pin every tap to
 /// one edge, and bounce after ~35 ms is ignored.
@@ -41,19 +42,21 @@ final class TapDetector: ObservableObject {
     var sideBias: Double = 0
     var ignoreWhileTyping = true
     var classifySides = false
+    var splitOnSideChange = true
 
     private var cancellables = Set<AnyCancellable>()
     private weak var sensor: SensorManager?
     private let queue = DispatchQueue(label: "app.mactap.detector", qos: .userInteractive)
 
-    private let refractoryPeriod: Double = 0.07
-    // A fixed dead time alone splits chassis ringing into multiple knocks.
-    // Require a continuous quiet interval before accepting another onset.
-    private let settlingPeriod: Double = 0.12
+    private let refractoryPeriod: Double = 0.14
+    // Chassis resonance can last seconds. Rearm on the short impact signal,
+    // rather than waiting for the entire low-frequency vibration to stop.
+    private let settlingPeriod: Double = 0.025
+    private var fastX = 0.0, fastY = 0.0, fastZ = 0.0
+    private var transientX = 0.0, transientY = 0.0, transientZ = 0.0
     private var readyForNextTap = true
     private var quietSince: Double?
     private var deliveryEpoch = 0
-    private let maxPulseWidth: Double = 0.12
     private let minCaptureTime: Double = 0.032
     private let attackWindow: Double = 0.034
     private let attackTau: Double = 0.011
@@ -64,7 +67,6 @@ final class TapDetector: ObservableObject {
 
     private var adaptiveNoise: Double = 0.006
     private var emaMag: Double = 0
-    private var emaRaw: Double = 1.0
     private var lastTapTime: Double = -1
     private var currentTapCount: Int = 0
     private var currentSide: TapSide = .left
@@ -165,8 +167,20 @@ final class TapDetector: ObservableObject {
 
         emaMag = 0.02 * mag + 0.98 * emaMag
         let delta = mag - emaMag
-        emaRaw = 0.02 * sample.rawMagnitude + 0.98 * emaRaw
-        let rawDelta = abs(sample.rawMagnitude - emaRaw)
+
+        // Two high-pass stages at the native ~800 Hz rate reject the smooth
+        // chassis oscillation while retaining a new contact's sharp attack.
+        let alpha = 0.35
+        fastX += alpha * (sample.x - fastX)
+        fastY += alpha * (sample.y - fastY)
+        fastZ += alpha * (sample.z - fastZ)
+        let hx = sample.x - fastX, hy = sample.y - fastY, hz = sample.z - fastZ
+        transientX += alpha * (hx - transientX)
+        transientY += alpha * (hy - transientY)
+        transientZ += alpha * (hz - transientZ)
+        let tx = hx - transientX, ty = hy - transientY, tz = hz - transientZ
+        let impact = sqrt(tx * tx + ty * ty + tz * tz)
+        let impactThreshold = max(0.009, tapThreshold * 0.25)
 
         if mag < tapThreshold * 0.9 {
             adaptiveNoise = 0.02 * mag + 0.98 * adaptiveNoise
@@ -178,11 +192,10 @@ final class TapDetector: ObservableObject {
         let inTypingLockout = now < typingUntil || keyedRecently
         let inRefractory = (now - lastTapTime) < refractoryPeriod
         let onset = (mag > threshold || delta > threshold)
-            && rawDelta > max(0.022, threshold * 0.65)
+            && impact > impactThreshold
 
         if !readyForNextTap && !capturing {
-            let releaseThreshold = max(adaptiveNoise * 1.8, threshold * 0.45)
-            if mag < releaseThreshold {
+            if impact < impactThreshold * 0.6 {
                 if quietSince == nil { quietSince = now }
                 if now - (quietSince ?? now) >= settlingPeriod {
                     readyForNextTap = true
@@ -196,7 +209,7 @@ final class TapDetector: ObservableObject {
             absorb(sample)
             let elapsed = now - captureStart
             let quiet = mag < capturePeakMag * 0.35 && elapsed >= (classifySides ? minCaptureTime : 0.006)
-            if quiet || elapsed > maxPulseWidth || captureSamples > 100 {
+            if quiet || elapsed >= attackWindow || captureSamples > 100 {
                 finalizeCapture(now: now, inTypingLockout: inTypingLockout, keyedRecently: keyedRecently)
             }
         } else if readyForNextTap && !inRefractory && onset {
@@ -207,7 +220,7 @@ final class TapDetector: ObservableObject {
             }
         }
 
-        if currentTapCount > 0 && now >= groupDeadline {
+        if currentTapCount > 0 && now >= groupDeadline && !capturing {
             emitGesture(now: now)
         }
 
@@ -349,10 +362,10 @@ final class TapDetector: ObservableObject {
             : .left
         let reportX = meanAttackX
 
-        lastTapTime = now
+        lastTapTime = captureStart
         // Close the previous group BEFORE adding this knock. Otherwise a
         // side-changing knock belongs to both the old and new groups.
-        if currentTapCount > 0 && side != currentSide && attackAbsX > 0.008 {
+        if splitOnSideChange && currentTapCount > 0 && side != currentSide && abs(reportX) > 0.008 {
             emitGesture(now: now)
         }
         currentTapCount += 1
@@ -362,9 +375,11 @@ final class TapDetector: ObservableObject {
 
         if currentTapCount == 1 {
             currentSide = side
-            groupDeadline = now + groupingWindow
             groupSimulated = captureSimulated
         }
+        // The window is the allowed gap to the NEXT knock, not the total
+        // duration of a three-knock sequence.
+        groupDeadline = now + groupingWindow
 
         if currentTapCount >= 3 {
             emitGesture(now: now)
