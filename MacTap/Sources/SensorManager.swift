@@ -282,9 +282,10 @@ final class SensorManager: ObservableObject {
         }
         runLoopThread = nil
         removeMonitors()
-        DispatchQueue.main.async {
-            self.isStreaming = false
-            self.gyroAvailable = false
+        // stop() is also called from deinit; never resurrect a dying manager.
+        DispatchQueue.main.async { [weak self] in
+            self?.isStreaming = false
+            self?.gyroAvailable = false
         }
         NSLog("MacTap: sensor stopped (%d samples)", collectedSamples)
     }

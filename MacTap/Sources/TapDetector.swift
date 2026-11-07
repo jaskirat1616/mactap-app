@@ -47,6 +47,12 @@ final class TapDetector: ObservableObject {
     private let queue = DispatchQueue(label: "app.mactap.detector", qos: .userInteractive)
 
     private let refractoryPeriod: Double = 0.07
+    // A fixed dead time alone splits chassis ringing into multiple knocks.
+    // Require a continuous quiet interval before accepting another onset.
+    private let settlingPeriod: Double = 0.12
+    private var readyForNextTap = true
+    private var quietSince: Double?
+    private var deliveryEpoch = 0
     private let maxPulseWidth: Double = 0.12
     private let minCaptureTime: Double = 0.032
     private let attackWindow: Double = 0.034
@@ -129,6 +135,28 @@ final class TapDetector: ObservableObject {
         }
     }
 
+    /// Called on the main thread when entering/leaving calibration. Also
+    /// invalidate results already waiting on the main queue.
+    func resetSession() {
+        queue.sync {
+            deliveryEpoch &+= 1
+            capturing = false
+            resetCapture()
+            currentTapCount = 0
+            groupPeakMag = 0
+            groupPeakX = 0
+            groupSimulated = false
+            groupDeadline = 0
+            lastTapTime = -1
+            readyForNextTap = false
+            quietSince = nil
+            impulseTimes.removeAll()
+            typingUntil = -1
+        }
+        pendingTapCount = 0
+        lastDetectedGesture = nil
+    }
+
     private func process(_ sample: SensorSample) {
         let mag = sample.magnitude
         let now = sample.timestamp
@@ -152,6 +180,18 @@ final class TapDetector: ObservableObject {
         let onset = (mag > threshold || delta > threshold)
             && rawDelta > max(0.022, threshold * 0.65)
 
+        if !readyForNextTap && !capturing {
+            let releaseThreshold = max(adaptiveNoise * 1.8, threshold * 0.45)
+            if mag < releaseThreshold {
+                if quietSince == nil { quietSince = now }
+                if now - (quietSince ?? now) >= settlingPeriod {
+                    readyForNextTap = true
+                }
+            } else {
+                quietSince = nil
+            }
+        }
+
         if capturing {
             absorb(sample)
             let elapsed = now - captureStart
@@ -159,7 +199,7 @@ final class TapDetector: ObservableObject {
             if quiet || elapsed > maxPulseWidth || captureSamples > 100 {
                 finalizeCapture(now: now, inTypingLockout: inTypingLockout, keyedRecently: keyedRecently)
             }
-        } else if !inRefractory && onset {
+        } else if readyForNextTap && !inRefractory && onset {
             if keyedRecently {
                 publishReject("typing")
             } else {
@@ -230,6 +270,8 @@ final class TapDetector: ObservableObject {
 
     private func startCapture(_ sample: SensorSample) {
         capturing = true
+        readyForNextTap = false
+        quietSince = nil
         captureStart = sample.timestamp
         capturePeakMag = sample.magnitude
         captureSamples = 1
@@ -308,6 +350,11 @@ final class TapDetector: ObservableObject {
         let reportX = meanAttackX
 
         lastTapTime = now
+        // Close the previous group BEFORE adding this knock. Otherwise a
+        // side-changing knock belongs to both the old and new groups.
+        if currentTapCount > 0 && side != currentSide && attackAbsX > 0.008 {
+            emitGesture(now: now)
+        }
         currentTapCount += 1
         groupPeakMag = max(groupPeakMag, peak)
         groupPeakX = abs(reportX) > abs(groupPeakX) ? reportX : groupPeakX
@@ -317,14 +364,6 @@ final class TapDetector: ObservableObject {
             currentSide = side
             groupDeadline = now + groupingWindow
             groupSimulated = captureSimulated
-        } else if side != currentSide && attackAbsX > 0.008 {
-            emitGesture(now: now)
-            currentTapCount = 1
-            currentSide = side
-            groupPeakMag = peak
-            groupPeakX = reportX
-            groupSimulated = captureSimulated
-            groupDeadline = now + groupingWindow
         }
 
         if currentTapCount >= 3 {
@@ -385,11 +424,13 @@ final class TapDetector: ObservableObject {
         groupPeakMag = 0
         groupPeakX = 0
         groupSimulated = false
-        capturing = false
-        resetCapture()
+        // A group can time out while the next knock is being captured.
+        // Emitting the previous group must not discard that capture.
+        let epoch = deliveryEpoch
 
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
+            guard self.queue.sync(execute: { self.deliveryEpoch == epoch }) else { return }
             self.lastDetectedGesture = gesture
             self.pendingTapCount = 0
             self.onGesture?(gesture)
