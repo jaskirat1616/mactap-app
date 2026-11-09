@@ -18,3 +18,8 @@ done
 swiftc "$@" -parse-as-library "${sources[@]}" Tests/CalibrationRegression.swift \
     -o "$test_dir/calibration-regression"
 "$test_dir/calibration-regression"
+
+# The localization regression uses isolated preferences and reads both catalogs.
+swiftc "$@" MacTap/Sources/Localization.swift Tests/LocalizationRegression.swift \
+    -o "$test_dir/localization-regression"
+"$test_dir/localization-regression"

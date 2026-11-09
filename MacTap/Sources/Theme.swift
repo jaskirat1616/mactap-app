@@ -107,10 +107,11 @@ struct CoastGlassStack<Content: View>: View {
 }
 
 struct CoastSectionHeader: View {
+    @ObservedObject private var localization = Localization.shared
     let title: String
 
     var body: some View {
-        Text(title)
+        Text(L(title))
             .font(.caption.weight(.semibold))
             .foregroundStyle(.secondary)
             .textCase(.uppercase)
@@ -123,6 +124,7 @@ struct CoastSectionHeader: View {
 }
 
 struct CoastCardGroup<Content: View>: View {
+    @ObservedObject private var localization = Localization.shared
     var title: String?
     var footer: String?
     @ViewBuilder var content: Content
@@ -140,7 +142,7 @@ struct CoastCardGroup<Content: View>: View {
                 VStack(spacing: 6) { content }
             }
             if let footer {
-                Text(footer)
+                Text(L(footer))
                     .font(.caption)
                     .foregroundStyle(.tertiary)
                     .padding(.horizontal, 6)
@@ -169,6 +171,7 @@ struct CoastRow<Leading: View, Trailing: View>: View {
 }
 
 struct CoastToggleRow: View {
+    @ObservedObject private var localization = Localization.shared
     let title: String
     var icon: String? = nil
     @Binding var isOn: Bool
@@ -183,10 +186,10 @@ struct CoastToggleRow: View {
                         .foregroundStyle(.secondary)
                         .frame(width: 16)
                 }
-                Text(title)
+                Text(L(title))
             }
         } trailing: {
-            Toggle(title, isOn: $isOn)
+            Toggle(L(title), isOn: $isOn)
                 .toggleStyle(.switch)
                 .controlSize(.mini)
                 .labelsHidden()
@@ -196,6 +199,7 @@ struct CoastToggleRow: View {
 }
 
 struct CoastButtonRow: View {
+    @ObservedObject private var localization = Localization.shared
     let title: String
     var icon: String? = nil
     var role: ButtonRole? = nil
@@ -209,7 +213,7 @@ struct CoastButtonRow: View {
                     Image(systemName: icon)
                         .frame(width: 16)
                 }
-                Text(title)
+                Text(L(title))
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.semibold))
@@ -225,6 +229,7 @@ struct CoastButtonRow: View {
 }
 
 struct CoastCapsuleButton: View {
+    @ObservedObject private var localization = Localization.shared
     let title: String
     var icon: String? = nil
     var prominent: Bool = false
@@ -237,7 +242,7 @@ struct CoastCapsuleButton: View {
                 if let icon {
                     Image(systemName: icon)
                 }
-                Text(title)
+                Text(L(title))
             }
             .font(.subheadline.weight(.medium))
             .padding(.horizontal, 12)

@@ -23,12 +23,13 @@ struct MacTapApp: App {
 }
 
 struct MenuBarLabel: View {
+    @ObservedObject private var localization = Localization.shared
     @ObservedObject var engine: GestureEngine
 
     var body: some View {
         Image(systemName: menuSymbol)
             .symbolRenderingMode(.hierarchical)
-            .accessibilityLabel(menuAccessibilityLabel)
+            .accessibilityLabel(L(menuAccessibilityLabel))
     }
 
     private var menuSymbol: String {
@@ -37,8 +38,8 @@ struct MenuBarLabel: View {
     }
 
     private var menuAccessibilityLabel: String {
-        if !engine.sensor.isAvailable { return "MacTap, motion sensor unavailable" }
-        return engine.isRunning ? "MacTap, detection on" : "MacTap, detection off"
+        if !engine.sensor.isAvailable { return L("MacTap, motion sensor unavailable") }
+        return engine.isRunning ? L("MacTap, detection on") : L("MacTap, detection off")
     }
 }
 

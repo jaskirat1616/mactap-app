@@ -260,9 +260,9 @@ struct GestureSlot: Codable, Identifiable, Hashable {
     func label(layout: GestureLayout) -> String {
         switch layout {
         case .knock:
-            return tapWord
+            return L(tapWord)
         case .sides:
-            return "\(side.displayName) · \(tapWord)"
+            return "\(L(side.displayName)) · \(L(tapWord))"
         }
     }
 
@@ -323,7 +323,7 @@ enum GesturePreset: String, CaseIterable, Identifiable, Codable {
 
     var knockLine: String {
         let left = slots.filter { $0.side == .left }.sorted { $0.tapCount < $1.tapCount }
-        return left.map { $0.actionType.displayName }.joined(separator: " · ")
+        return left.map { L($0.actionType.displayName) }.joined(separator: " · ")
     }
 
     var subtitle: String {

@@ -2,6 +2,7 @@ import SwiftUI
 import AppKit
 
 struct DashboardView: View {
+    @ObservedObject private var localization = Localization.shared
     @ObservedObject var engine: GestureEngine
     @ObservedObject var permissions: PermissionsManager
     @ObservedObject private var configStore = ConfigStore.shared
@@ -16,7 +17,7 @@ struct DashboardView: View {
             hero
             statusCapsules
             if !permissions.allGranted {
-                CoastCapsuleButton(title: "Allow Accessibility", icon: "lock.shield", prominent: true, fillOnly: true) {
+                CoastCapsuleButton(title: L("Allow Accessibility"), icon: "lock.shield", prominent: true, fillOnly: true) {
                     permissions.requestAccessibility()
                 }
             }
@@ -33,13 +34,13 @@ struct DashboardView: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(statusTitle)
                         .font(.headline)
-                    Text(statusSubtitle)
+                    Text(L(statusSubtitle))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
         } trailing: {
-            Toggle("Detection", isOn: Binding(
+            Toggle(L("Detection"), isOn: Binding(
                 get: { engine.isRunning },
                 set: { on in
                     if on { engine.start() } else { engine.stop() }
@@ -49,7 +50,7 @@ struct DashboardView: View {
             .controlSize(.mini)
             .labelsHidden()
             .disabled(!engine.sensor.isAvailable)
-            .accessibilityLabel("Detection")
+            .accessibilityLabel(L("Detection"))
         }
     }
 
@@ -70,10 +71,10 @@ struct DashboardView: View {
             .opacity(engine.isRunning ? 1 : 0.35)
 
             HStack {
-                Text(heroCaption)
+                Text(L(heroCaption))
                     .font(.caption.weight(.medium))
                 Spacer()
-                Text(sensorCaption)
+                Text(L(sensorCaption))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -85,7 +86,7 @@ struct DashboardView: View {
 
     private var unsupportedBanner: some View {
         CoastRow(fillOnly: true) {
-            Label("This Mac’s motion sensor isn’t accessible", systemImage: "exclamationmark.triangle")
+            Label(L("This Mac’s motion sensor isn’t accessible"), systemImage: "exclamationmark.triangle")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -97,24 +98,24 @@ struct DashboardView: View {
     private var statusCapsules: some View {
         VStack(spacing: 6) {
             CoastRow(fillOnly: true) {
-                Label("Last tap", systemImage: "hand.tap")
+                Label(L("Last tap"), systemImage: "hand.tap")
                     .foregroundStyle(.secondary)
                     .font(.caption)
             } trailing: {
                 if let g = engine.lastGesture {
-                    Text(lastActionCaption(g))
+                    Text(L(lastActionCaption(g)))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(MacTapTheme.accent(for: g.side))
                         .lineLimit(1)
                 } else {
-                    Text("Waiting")
+                    Text(L("Waiting"))
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
             }
 
             CoastRow(fillOnly: true) {
-                Label("Preset", systemImage: "square.grid.2x2")
+                Label(L("Preset"), systemImage: "square.grid.2x2")
                     .foregroundStyle(.secondary)
                     .font(.caption)
             } trailing: {
@@ -123,11 +124,11 @@ struct DashboardView: View {
                         Button {
                             configStore.applyPreset(preset)
                         } label: {
-                            Label(preset.title, systemImage: preset.icon)
+                            Label(L(preset.title), systemImage: preset.icon)
                         }
                     }
                 } label: {
-                    Text(configStore.currentPreset?.title ?? "Custom")
+                    Text(L(configStore.currentPreset?.title ?? L("Custom")))
                         .font(.caption.weight(.semibold))
                 }
                 .menuStyle(.borderlessButton)
@@ -135,7 +136,7 @@ struct DashboardView: View {
             }
 
             CoastToggleRow(
-                title: "On-screen overlay",
+                title: L("On-screen overlay"),
                 icon: "rectangle.inset.filled",
                 isOn: $configStore.config.showHUD,
                 fillOnly: true
@@ -145,7 +146,7 @@ struct DashboardView: View {
 
             if configStore.config.stats.todayCount > 0 {
                 CoastRow(fillOnly: true) {
-                    Label("Today", systemImage: "chart.bar")
+                    Label(L("Today"), systemImage: "chart.bar")
                         .foregroundStyle(.secondary)
                         .font(.caption)
                 } trailing: {
@@ -158,14 +159,14 @@ struct DashboardView: View {
 
     private var footer: some View {
         HStack(spacing: 6) {
-            CoastCapsuleButton(title: "Settings", icon: "gearshape", fillOnly: true) {
+            CoastCapsuleButton(title: L("Settings"), icon: "gearshape", fillOnly: true) {
                 NSApp.activate(ignoringOtherApps: true)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
                     openSettings()
                     NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
                 }
             }
-            CoastCapsuleButton(title: "Quit", fillOnly: true) {
+            CoastCapsuleButton(title: L("Quit"), fillOnly: true) {
                 NSApplication.shared.terminate(nil)
             }
         }
@@ -185,51 +186,51 @@ struct DashboardView: View {
     private var heroCaption: String {
         if let g = engine.lastGesture {
             if let slot = engine.lastExecutedSlot, slot.actionType != .none {
-                return slot.actionType.displayName
+                return L(slot.actionType.displayName)
             }
             return configStore.config.layout == .knock
                 ? tapWord(g.tapCount)
-                : "\(g.side.displayName) · \(tapWord(g.tapCount))"
+                : "\(L(g.side.displayName)) · \(tapWord(g.tapCount))"
         }
         return engine.isRunning
-            ? (configStore.config.layout == .knock ? "Knock the chassis or desk" : "Tap a chassis edge")
-            : (engine.sensor.isAvailable ? "Detection is off" : "No motion sensor")
+            ? (configStore.config.layout == .knock ? L("Knock the chassis or desk") : L("Tap a chassis edge"))
+            : (engine.sensor.isAvailable ? L("Detection is off") : L("No motion sensor"))
     }
 
     private func lastActionCaption(_ g: DetectedGesture) -> String {
         let layout = configStore.config.layout
-        let pattern = layout == .knock ? tapWord(g.tapCount) : "\(g.side.displayName) · \(tapWord(g.tapCount))"
+        let pattern = layout == .knock ? tapWord(g.tapCount) : "\(L(g.side.displayName)) · \(tapWord(g.tapCount))"
         if let slot = engine.lastExecutedSlot, slot.actionType != ActionType.none {
-            return "\(pattern) · \(slot.actionType.displayName)"
+            return "\(pattern) · \(L(slot.actionType.displayName))"
         }
         return pattern
     }
 
     private func tapWord(_ count: Int) -> String {
         switch count {
-        case 1: return "Single"
-        case 2: return "Double"
-        default: return "Triple"
+        case 1: return L("Single")
+        case 2: return L("Double")
+        default: return L("Triple")
         }
     }
 
     private var statusTitle: String { "MacTap" }
 
     private var statusSubtitle: String {
-        if !engine.sensor.isAvailable { return "Unavailable" }
-        return engine.isRunning ? "Listening" : "Paused"
+        if !engine.sensor.isAvailable { return L("Unavailable") }
+        return engine.isRunning ? L("Listening") : L("Paused")
     }
 
     private var sensorCaption: String {
         if engine.sensor.source == .spu {
             if engine.sensor.gyroAvailable {
-                return engine.sensor.isStreaming ? "IMU + gyro" : "Ready"
+                return engine.sensor.isStreaming ? L("IMU + gyro") : L("Ready")
             }
-            return engine.sensor.isStreaming ? "Built-in IMU" : "Ready"
+            return engine.sensor.isStreaming ? L("Built-in IMU") : L("Ready")
         }
         if engine.sensor.isArrowSimulationEnabled {
-            return "Debug arrows"
+            return L("Debug arrows")
         }
-        return "No IMU"
+        return L("No IMU")
     }
 }
