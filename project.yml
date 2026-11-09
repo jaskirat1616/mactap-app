@@ -27,6 +27,8 @@ targets:
       - path: MacTap/Sources
       - path: MacTap/Resources/Assets.xcassets
         buildPhase: resources
+      - path: MacTap/Resources/Localization
+        buildPhase: resources
       - path: MacTap/Resources/PrivacyInfo.xcprivacy
         buildPhase: resources
     info:

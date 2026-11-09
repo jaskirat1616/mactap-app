@@ -154,6 +154,7 @@ final class HUDModel: ObservableObject {
 }
 
 struct HUDView: View {
+    @ObservedObject private var localization = Localization.shared
     @ObservedObject var model: HUDModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -190,14 +191,14 @@ struct HUDView: View {
         let subtitle: String
         let icon: String
         if model.permissionPrompt {
-            title = "Allow Accessibility"
-            subtitle = "Then knocks can send shortcuts"
+            title = L("Allow Accessibility")
+            subtitle = L("Then knocks can send shortcuts")
             icon = "lock.shield"
         } else {
-            title = action == .none ? tapCaption(gesture.tapCount) : action.displayName
+            title = action == .none ? tapCaption(gesture.tapCount) : L(action.displayName)
             subtitle = action == .none
-                ? (layout == .knock ? "Anywhere" : gesture.side.displayName)
-                : (layout == .knock ? tapCaption(gesture.tapCount) : "\(gesture.side.displayName) · \(tapCaption(gesture.tapCount))")
+                ? (layout == .knock ? L("Anywhere") : L(gesture.side.displayName))
+                : (layout == .knock ? tapCaption(gesture.tapCount) : "\(L(gesture.side.displayName)) · \(tapCaption(gesture.tapCount))")
             icon = action == .none ? "hand.tap.fill" : action.icon
         }
 
@@ -210,11 +211,11 @@ struct HUDView: View {
                 .frame(width: 72, height: 56)
 
             VStack(spacing: 3) {
-                Text(title)
+                Text(L(title))
                     .font(.system(.headline, design: .rounded).weight(.semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
-                Text(subtitle)
+                Text(L(subtitle))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -247,7 +248,7 @@ struct HUDView: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(layout == .knock
                             ? "\(tapCaption(gesture.tapCount)), \(title)"
-                            : "\(gesture.side.displayName), \(tapCaption(gesture.tapCount)), \(title)")
+                            : "\(L(gesture.side.displayName)), \(tapCaption(gesture.tapCount)), \(title)")
     }
 
     private var resolvedAction: ActionType {
@@ -269,9 +270,9 @@ struct HUDView: View {
 
     private func tapCaption(_ count: Int) -> String {
         switch count {
-        case 1: return "Single"
-        case 2: return "Double"
-        default: return "Triple"
+        case 1: return L("Single")
+        case 2: return L("Double")
+        default: return L("Triple")
         }
     }
 }

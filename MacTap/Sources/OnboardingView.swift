@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct OnboardingView: View {
+    @ObservedObject private var localization = Localization.shared
     @ObservedObject var engine: GestureEngine
     @ObservedObject var configStore: ConfigStore
     @ObservedObject var permissions: PermissionsManager
@@ -15,9 +16,9 @@ struct OnboardingView: View {
                 .coastCard()
 
             VStack(alignment: .leading, spacing: 8) {
-                Text(title)
+                Text(L(title))
                     .font(.largeTitle.weight(.semibold))
-                Text(bodyCopy)
+                Text(L(bodyCopy))
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -30,10 +31,10 @@ struct OnboardingView: View {
                         .frame(height: 96)
                 case 1:
                     if permissions.allGranted {
-                        Label("Accessibility is on", systemImage: "checkmark.circle.fill")
+                        Label(L("Accessibility is on"), systemImage: "checkmark.circle.fill")
                             .foregroundStyle(.green)
                     } else {
-                        Button("Open Accessibility Settings") {
+                        Button(L("Open Accessibility Settings")) {
                             permissions.requestAccessibility()
                         }
                         .modifier(OnboardGlassProminent())
@@ -47,11 +48,11 @@ struct OnboardingView: View {
 
             HStack {
                 if step > 0 {
-                    Button("Back") { step -= 1 }
+                    Button(L("Back")) { step -= 1 }
                         .modifier(OnboardGlass())
                 }
                 Spacer()
-                Button(step == 2 ? "Get Started" : "Continue") {
+                Button(step == 2 ? L("Get Started") : L("Continue")) {
                     if step == 2 {
                         configStore.config.hasCompletedOnboarding = true
                         configStore.save()
@@ -75,66 +76,83 @@ struct OnboardingView: View {
     }
 
     private var title: String {
-        ["Tap the chassis", "Allow Accessibility", "Choose your actions"][min(step, 2)]
+        [L("Tap the chassis"), L("Allow Accessibility"), L("Choose your actions")][min(step, 2)]
     }
 
     private var bodyCopy: String {
         [
-            "MacTap uses the MacBook motion sensors. Knock the left or right edge once, twice, or three times to run a shortcut.",
-            "Accessibility is required so MacTap can send keyboard shortcuts and media keys. Knocks are ignored while you type.",
-            "Map each gesture in Gestures. Use Calibration if left and right feel swapped. Sound effects and the tap HUD are optional."
+            L("MacTap uses the MacBook motion sensors. Knock the left or right edge once, twice, or three times to run a shortcut."),
+            L("Accessibility is required so MacTap can send keyboard shortcuts and media keys. Knocks are ignored while you type."),
+            L("Map each gesture in Gestures. Use Calibration if left and right feel swapped. Sound effects and the tap HUD are optional.")
         ][min(step, 2)]
     }
 }
 
 struct CalibrationView: View {
+    @ObservedObject private var localization = Localization.shared
     @ObservedObject var engine: GestureEngine
     @ObservedObject var configStore: ConfigStore
     @State private var leftPeaks: [Double] = []
     @State private var rightPeaks: [Double] = []
-    @State private var message = "Start detection, then tap the left edge four times."
+    @State private var message = LocalizedMessage("Tap the left edge four times, pausing at least half a second between knocks.")
+    @State private var collectingRight = false
+    @State private var saved = false
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Side Calibration")
+            Text(L("Side Calibration"))
                 .font(.title2.weight(.semibold))
-            Text(message)
+            Text(message.text)
                 .foregroundStyle(.secondary)
 
             HStack(spacing: 12) {
-                calColumn(title: "Left", count: leftPeaks.count)
-                calColumn(title: "Right", count: rightPeaks.count)
+                calColumn(title: L("Left"), count: leftPeaks.count)
+                calColumn(title: L("Right"), count: rightPeaks.count)
             }
 
-            if leftPeaks.count >= 4 && rightPeaks.count >= 4 {
-                Button("Save Calibration") { commit() }
+            if leftPeaks.count == 4 && !collectingRight {
+                Button(L("Continue with right edge")) {
+                    engine.resetCalibrationSamples()
+                    collectingRight = true
+                    message = LocalizedMessage("Now tap the right edge four times, pausing between knocks.")
+                }
+                .modifier(OnboardGlassProminent())
+            }
+
+            if leftPeaks.count >= 4 && rightPeaks.count >= 4 && !saved {
+                Button(L("Save Calibration")) { commit() }
                     .modifier(OnboardGlassProminent())
             }
 
-            Button("Reset Samples") {
+            Button(L("Reset Samples")) {
                 leftPeaks.removeAll()
                 rightPeaks.removeAll()
-                message = "Tap the left edge four times."
+                collectingRight = false
+                saved = false
+                engine.resetCalibrationSamples()
+                message = LocalizedMessage("Tap the left edge four times, pausing between knocks.")
             }
             .modifier(OnboardGlass())
+
+            Button(saved ? L("Done") : L("Cancel")) { dismiss() }
+                .modifier(OnboardGlass())
 
             Spacer()
         }
         .padding(24)
         .onAppear {
-            configStore.config.invertSides = false
-            configStore.config.sideBias = 0
-            configStore.save()
-            if !engine.isRunning { engine.start() }
+            engine.beginCalibration()
         }
-        .onChange(of: engine.flashToken) { _, _ in
-            ingest()
+        .onDisappear { engine.endCalibration() }
+        .onReceive(engine.calibrationGestures) { gesture in
+            ingest(gesture)
         }
     }
 
     private func calColumn(title: String, count: Int) -> some View {
         VStack(spacing: 6) {
-            Text(title)
+            Text(L(title))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Text("\(count)/4")
@@ -145,28 +163,37 @@ struct CalibrationView: View {
         .coastCard()
     }
 
-    private func ingest() {
-        guard let g = engine.lastGesture else { return }
-        if leftPeaks.count < 4 {
+    private func ingest(_ g: DetectedGesture) {
+        guard !saved else { return }
+        guard g.tapCount == 1, !g.isSimulated, abs(g.peakX) >= 0.0024 else {
+            message = LocalizedMessage("Sample skipped. Use one clear side knock, then pause at least half a second.")
+            return
+        }
+        if !collectingRight && leftPeaks.count < 4 {
             leftPeaks.append(g.peakX)
-            message = leftPeaks.count >= 4 ? "Now tap the right edge four times." : "Left \(leftPeaks.count) of 4"
-        } else if rightPeaks.count < 4 {
+            message = leftPeaks.count >= 4
+                ? LocalizedMessage("Left samples ready. Click Continue before tapping the right edge.")
+                : LocalizedMessage("Left %d of 4", leftPeaks.count)
+        } else if collectingRight && rightPeaks.count < 4 {
             rightPeaks.append(g.peakX)
-            message = rightPeaks.count >= 4 ? "Ready to save." : "Right \(rightPeaks.count) of 4"
+            message = rightPeaks.count >= 4 ? LocalizedMessage("Ready to save.") : LocalizedMessage("Right %d of 4", rightPeaks.count)
         }
     }
 
     private func commit() {
         let leftMean = leftPeaks.reduce(0, +) / Double(leftPeaks.count)
         let rightMean = rightPeaks.reduce(0, +) / Double(rightPeaks.count)
+        guard abs(leftMean - rightMean) >= 0.0048 else {
+            message = LocalizedMessage("The two edges look too similar. Reset samples and try clear side knocks.")
+            return
+        }
         configStore.config.invertSides = leftMean > rightMean
         configStore.config.sideBias = -(leftMean + rightMean) / 2
         configStore.save()
-        engine.detector.invertSides = configStore.config.invertSides
-        engine.detector.sideBias = configStore.config.sideBias
+        saved = true
         message = configStore.config.invertSides
-            ? "Saved. Left and right were swapped for this Mac."
-            : "Saved. Side detection kept as-is."
+            ? LocalizedMessage("Saved. Left and right were swapped for this Mac.")
+            : LocalizedMessage("Saved. Side detection kept as-is.")
     }
 }
 

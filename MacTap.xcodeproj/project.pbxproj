@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A00000000000000000000001 /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000002 /* Localization.swift */; };
+		A00000000000000000000003 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000004 /* Localizable.strings */; };
 		030230659D9705F90C87751B /* LaunchAtLogin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8379D3B8537030BD1092A8BE /* LaunchAtLogin.swift */; };
 		1B92AFDBD647C8C3A0092AD9 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33A8286469C2EB6A35FD909E /* SettingsView.swift */; };
 		25018FB20B14D83BE4BA09F7 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD3FE7B2277487D8510597BD /* OnboardingView.swift */; };
@@ -27,6 +29,9 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		A00000000000000000000002 /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
+		A00000000000000000000005 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = "Localization/en.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		A00000000000000000000006 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "Localization/zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		0373540309C71B3EE31682A0 /* IntroView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntroView.swift; sourceTree = "<group>"; };
 		0F9ADC090B14EA0FCBE906A4 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		103E0F07B7AFE424E435D33A /* GestureEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GestureEngine.swift; sourceTree = "<group>"; };
@@ -60,6 +65,7 @@
 		2C30DB0438B4EEA13BD56CC2 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				A00000000000000000000004 /* Localizable.strings */,
 				9044918AD7C1E8D89070AB1A /* Assets.xcassets */,
 				F122E2A8D06A751B1D61BADB /* PrivacyInfo.xcprivacy */,
 			);
@@ -75,6 +81,7 @@
 				103E0F07B7AFE424E435D33A /* GestureEngine.swift */,
 				F094D60EDCE51E620CDC4FC3 /* HUDOverlay.swift */,
 				0373540309C71B3EE31682A0 /* IntroView.swift */,
+				A00000000000000000000002 /* Localization.swift */,
 				8379D3B8537030BD1092A8BE /* LaunchAtLogin.swift */,
 				67F10E50889BC973C1767DBA /* MacTapApp.swift */,
 				CD3FE7B2277487D8510597BD /* OnboardingView.swift */,
@@ -105,6 +112,10 @@
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
+
+/* Begin PBXVariantGroup section */
+		A00000000000000000000004 /* Localizable.strings */ = {isa = PBXVariantGroup; children = (A00000000000000000000005 /* en */, A00000000000000000000006 /* zh-Hans */); name = Localizable.strings; sourceTree = "<group>"; };
+/* End PBXVariantGroup section */
 
 /* Begin PBXNativeTarget section */
 		C0BE354704D2358B1A7BF448 /* MacTap */ = {
@@ -143,6 +154,7 @@
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				"zh-Hans",
 				Base,
 				en,
 			);
@@ -163,6 +175,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A00000000000000000000003 /* Localizable.strings in Resources */,
 				5026A115C1E45222FAE3E7D0 /* Assets.xcassets in Resources */,
 				D2CA50ED7165578FA1267CF6 /* PrivacyInfo.xcprivacy in Resources */,
 			);
@@ -181,6 +194,7 @@
 				77F322658D7EDD29D51393EC /* GestureEngine.swift in Sources */,
 				4C982B5E5B7BCFEEBBEA27F0 /* HUDOverlay.swift in Sources */,
 				BB397A4A84DDD58DCC70DF04 /* IntroView.swift in Sources */,
+				A00000000000000000000001 /* Localization.swift in Sources */,
 				030230659D9705F90C87751B /* LaunchAtLogin.swift in Sources */,
 				D6879DECC58EEDE697EA7203 /* MacTapApp.swift in Sources */,
 				25018FB20B14D83BE4BA09F7 /* OnboardingView.swift in Sources */,

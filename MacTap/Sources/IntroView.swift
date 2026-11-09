@@ -121,6 +121,7 @@ final class IntroWindowController: NSObject, NSWindowDelegate {
 }
 
 struct IntroRoot: View {
+    @ObservedObject private var localization = Localization.shared
     @ObservedObject var engine: GestureEngine
     @ObservedObject var permissions = PermissionsManager.shared
     @ObservedObject var configStore = ConfigStore.shared
@@ -141,7 +142,7 @@ struct IntroRoot: View {
                 HStack {
                     Spacer()
                     if step != .splash {
-                        Button("Skip") { finish() }
+                        Button(L("Skip")) { finish() }
                             .buttonStyle(.plain)
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(.white.opacity(0.45))
@@ -317,13 +318,14 @@ private struct Wordmark: View {
 // MARK: - Shared chrome
 
 private struct IntroPill: View {
+    @ObservedObject private var localization = Localization.shared
     let title: String
     var prominent: Bool = true
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Text(title)
+            Text(L(title))
                 .font(.headline)
                 .padding(.horizontal, 28)
                 .frame(height: 42)
@@ -376,6 +378,7 @@ private struct IntroCard<Content: View>: View {
 // MARK: - Steps
 
 private struct CinematicSplash: View {
+    @ObservedObject private var localization = Localization.shared
     var body: some View {
         ZStack {
             Color.black
@@ -383,14 +386,14 @@ private struct CinematicSplash: View {
 
             VStack(spacing: 16) {
                 Wordmark(large: true)
-                Text("Knock an edge. Run a shortcut.")
+                Text(L("Knock an edge. Run a shortcut."))
                     .font(.title3)
                     .foregroundStyle(.white.opacity(0.42))
             }
 
             VStack {
                 Spacer()
-                Text("Click to continue · Esc to skip")
+                Text(L("Click to continue · Esc to skip"))
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.28))
                     .padding(.bottom, 36)
@@ -400,23 +403,24 @@ private struct CinematicSplash: View {
 }
 
 private struct WelcomeStep: View {
+    @ObservedObject private var localization = Localization.shared
     var onContinue: () -> Void
 
     var body: some View {
         VStack(spacing: 22) {
             Wordmark()
             VStack(spacing: 10) {
-                Text("Six knocks.\nYour whole Mac.")
+                Text(L("Six knocks.\nYour whole Mac."))
                     .font(.system(size: 56, weight: .semibold, design: .default))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.white)
-                Text("Left and right edges. One, two, or three taps.\nCopy, paste, play, screenshot, Accept — without the keyboard.")
+                Text(L("Left and right edges. One, two, or three taps.\nCopy, paste, play, screenshot, Accept — without the keyboard."))
                     .font(.title3)
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.white.opacity(0.55))
                     .fixedSize(horizontal: false, vertical: true)
             }
-            IntroPill(title: "Continue", action: onContinue)
+            IntroPill(title: L("Continue"), action: onContinue)
                 .padding(.top, 8)
         }
         .padding(.horizontal, 48)
@@ -424,18 +428,19 @@ private struct WelcomeStep: View {
 }
 
 private struct FeaturesStep: View {
+    @ObservedObject private var localization = Localization.shared
     var onContinue: () -> Void
 
     var body: some View {
         VStack(spacing: 28) {
-            Text("Built for real work.")
+            Text(L("Built for real work."))
                 .font(.system(size: 44, weight: .semibold))
                 .foregroundStyle(.white)
 
             HStack(alignment: .top, spacing: 16) {
-                feature("Presets", icon: "square.grid.2x2", color: .orange, copy: "Daily, Coding, Capture, Media, Focus — one click.")
-                feature("Per-app", icon: "app.badge", color: .blue, copy: "Cursor gets Accept. Safari gets tabs. Overrides only there.")
-                feature("1 · 2 · 3", icon: "hand.tap.fill", color: .white, copy: "Six slots. Left and right stay different.")
+                feature(L("Presets"), icon: "square.grid.2x2", color: .orange, copy: L("Daily, Coding, Capture, Media, Focus — one click."))
+                feature(L("Per-app"), icon: "app.badge", color: .blue, copy: L("Cursor gets Accept. Safari gets tabs. Overrides only there."))
+                feature("1 · 2 · 3", icon: "hand.tap.fill", color: .white, copy: L("Six slots. Left and right stay different."))
             }
             .padding(.horizontal, 36)
 
@@ -443,7 +448,7 @@ private struct FeaturesStep: View {
                 .frame(width: 180, height: 56)
                 .padding(.top, 4)
 
-            IntroPill(title: "Continue", action: onContinue)
+            IntroPill(title: L("Continue"), action: onContinue)
         }
     }
 
@@ -453,10 +458,10 @@ private struct FeaturesStep: View {
                 Image(systemName: icon)
                     .font(.title2)
                     .foregroundStyle(color)
-                Text(title)
+                Text(L(title))
                     .font(.headline)
                     .foregroundStyle(.white)
-                Text(copy)
+                Text(L(copy))
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.5))
                     .fixedSize(horizontal: false, vertical: true)
@@ -468,15 +473,16 @@ private struct FeaturesStep: View {
 }
 
 private struct PermissionStep: View {
+    @ObservedObject private var localization = Localization.shared
     @ObservedObject var permissions: PermissionsManager
     var onContinue: () -> Void
 
     var body: some View {
         VStack(spacing: 22) {
-            Text("Enable Accessibility")
+            Text(L("Enable Accessibility"))
                 .font(.system(size: 44, weight: .semibold))
                 .foregroundStyle(.white)
-            Text("Needed so a tap can send Search, copy, paste, and media keys. Detection itself does not need it.")
+            Text(L("Needed so a tap can send Search, copy, paste, and media keys. Detection itself does not need it."))
                 .font(.title3)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.white.opacity(0.55))
@@ -488,16 +494,16 @@ private struct PermissionStep: View {
                         .font(.title)
                         .foregroundStyle(permissions.allGranted ? Color.green : Color.white.opacity(0.85))
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Accessibility")
+                        Text(L("Accessibility"))
                             .font(.headline)
                             .foregroundStyle(.white)
-                        Text(permissions.allGranted ? "Allowed. Actions can run." : "Required for actions")
+                        Text(permissions.allGranted ? L("Allowed. Actions can run.") : L("Required for actions"))
                             .font(.subheadline)
                             .foregroundStyle(.white.opacity(0.5))
                     }
                     Spacer()
                     if !permissions.allGranted {
-                        IntroPill(title: "Allow", prominent: true) {
+                        IntroPill(title: L("Allow"), prominent: true) {
                             IntroWindowController.shared.yieldToSystemSettings()
                             permissions.requestAccessibility()
                         }
@@ -507,14 +513,14 @@ private struct PermissionStep: View {
             .frame(maxWidth: 520)
 
             if permissions.allGranted {
-                IntroPill(title: "Continue", action: onContinue)
+                IntroPill(title: L("Continue"), action: onContinue)
             } else {
-                Text("System Settings will open. Turn on MacTap, then this screen continues.")
+                Text(L("System Settings will open. Turn on MacTap, then this screen continues."))
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.4))
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 420)
-                Button("Continue without actions") { onContinue() }
+                Button(L("Continue without actions")) { onContinue() }
                     .buttonStyle(.plain)
                     .foregroundStyle(.white.opacity(0.4))
             }
@@ -525,6 +531,7 @@ private struct PermissionStep: View {
 }
 
 private struct TryTapStep: View {
+    @ObservedObject private var localization = Localization.shared
     @ObservedObject var engine: GestureEngine
     var onContinue: () -> Void
     @State private var heard = false
@@ -550,27 +557,27 @@ private struct TryTapStep: View {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 36, weight: .regular))
                 .foregroundStyle(.orange)
-            Text("This Mac can’t knock.")
+            Text(L("This Mac can’t knock."))
                 .font(.system(size: 40, weight: .semibold))
                 .foregroundStyle(.white)
                 .multilineTextAlignment(.center)
-            Text("MacTap needs the chassis motion sensor. Original M1 Air and some other models don’t expose it. Detection stays off so arrow keys keep working.")
+            Text(L("MacTap needs the chassis motion sensor. Original M1 Air and some other models don’t expose it. Detection stays off so arrow keys keep working."))
                 .font(.title3)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.white.opacity(0.55))
                 .frame(maxWidth: 480)
-            IntroPill(title: "Continue", action: onContinue)
+            IntroPill(title: L("Continue"), action: onContinue)
         }
     }
 
     private var listening: some View {
         VStack(spacing: 22) {
-            Text(heard ? "Got it." : "Knock the left edge.")
+            Text(heard ? L("Got it.") : L("Knock the left edge."))
                 .font(.system(size: 44, weight: .semibold))
                 .foregroundStyle(.white)
             Text(heard
-                 ? "That’s a chassis tap. Left and right are different."
-                 : "A light knock on the left side of the MacBook. We’ll listen.")
+                 ? L("That’s a chassis tap. Left and right are different.")
+                 : L("A light knock on the left side of the MacBook. We’ll listen."))
                 .font(.title3)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.white.opacity(0.55))
@@ -583,15 +590,15 @@ private struct TryTapStep: View {
             .frame(width: 220, height: 72)
 
             if heard, let g = engine.lastGesture {
-                Text("\(g.side.displayName) · \(g.tapCount == 1 ? "single" : g.tapCount == 2 ? "double" : "triple")")
+                Text("\(L(g.side.displayName)) · \(L(g.tapCount == 1 ? "single" : g.tapCount == 2 ? "double" : "triple"))")
                     .font(.headline)
                     .foregroundStyle(MacTapTheme.accent(for: g.side))
-                IntroPill(title: "Continue", action: onContinue)
+                IntroPill(title: L("Continue"), action: onContinue)
             } else {
-                Text("Waiting for a tap…")
+                Text(L("Waiting for a tap…"))
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.35))
-                Button("Skip for now") { onContinue() }
+                Button(L("Skip for now")) { onContinue() }
                     .buttonStyle(.plain)
                     .foregroundStyle(.white.opacity(0.4))
             }
@@ -600,6 +607,7 @@ private struct TryTapStep: View {
 }
 
 private struct FinaleStep: View {
+    @ObservedObject private var localization = Localization.shared
     var onDone: () -> Void
 
     var body: some View {
@@ -607,15 +615,15 @@ private struct FinaleStep: View {
             Image(systemName: "arrow.up.to.line")
                 .font(.system(size: 36, weight: .regular))
                 .foregroundStyle(.white.opacity(0.85))
-            Text("It’s in the menu bar.")
+            Text(L("It’s in the menu bar."))
                 .font(.system(size: 48, weight: .semibold))
                 .foregroundStyle(.white)
-            Text("Switch presets from there. Overlay and sounds stay optional.")
+            Text(L("Switch presets from there. Overlay and sounds stay optional."))
                 .font(.title3)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.white.opacity(0.55))
                 .frame(maxWidth: 460)
-            IntroPill(title: "Get Started", action: onDone)
+            IntroPill(title: L("Get Started"), action: onDone)
                 .padding(.top, 10)
         }
     }

@@ -260,9 +260,9 @@ struct GestureSlot: Codable, Identifiable, Hashable {
     func label(layout: GestureLayout) -> String {
         switch layout {
         case .knock:
-            return tapWord
+            return L(tapWord)
         case .sides:
-            return "\(side.displayName) · \(tapWord)"
+            return "\(L(side.displayName)) · \(L(tapWord))"
         }
     }
 
@@ -323,7 +323,7 @@ enum GesturePreset: String, CaseIterable, Identifiable, Codable {
 
     var knockLine: String {
         let left = slots.filter { $0.side == .left }.sorted { $0.tapCount < $1.tapCount }
-        return left.map { $0.actionType.displayName }.joined(separator: " · ")
+        return left.map { L($0.actionType.displayName) }.joined(separator: " · ")
     }
 
     var subtitle: String {
@@ -455,6 +455,22 @@ enum GestureLayout: String, Codable, CaseIterable, Identifiable {
 }
 
 struct AppConfig: Codable {
+    /// Side noise must not split a sequence when both sides resolve to the
+    /// same actions. Include per-app overrides when deciding equivalence.
+    func hasDistinctSideActions(bundleID: String?) -> Bool {
+        guard layout == .sides else { return false }
+        let overrides = appRules.first { $0.enabled && $0.bundleID == bundleID }?.slots ?? []
+        func resolved(_ side: TapSide, _ count: Int) -> GestureSlot? {
+            overrides.first { $0.side == side && $0.tapCount == count }
+                ?? slots.first { $0.side == side && $0.tapCount == count }
+        }
+        return (1...3).contains { count in
+            let left = resolved(.left, count), right = resolved(.right, count)
+            return (left?.actionType ?? .none) != (right?.actionType ?? .none)
+                || (left?.parameter ?? "") != (right?.parameter ?? "")
+        }
+    }
+
     var slots: [GestureSlot]
     var sensitivity: Double
     var tapGroupingWindow: Double

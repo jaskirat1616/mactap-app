@@ -9,6 +9,9 @@ final class GestureEngine: ObservableObject {
     @Published var lastExecutedSlot: GestureSlot?
     @Published var flashToken: Int = 0
     @Published var hudGesture: DetectedGesture?
+    @Published private(set) var isCalibrating = false
+    let calibrationGestures = PassthroughSubject<DetectedGesture, Never>()
+    private var wasRunningBeforeCalibration = false
 
     let sensor = SensorManager()
     private(set) lazy var detector = TapDetector(sensor: sensor)
@@ -36,6 +39,11 @@ final class GestureEngine: ObservableObject {
             }
             .store(in: &cancellables)
 
+        NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didActivateApplicationNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.apply(ConfigStore.shared.config) }
+            .store(in: &cancellables)
+
         apply(ConfigStore.shared.config)
         SoundManager.shared.sync(from: ConfigStore.shared.config)
     }
@@ -43,10 +51,33 @@ final class GestureEngine: ObservableObject {
     private func apply(_ config: AppConfig) {
         detector.sensitivity = config.sensitivity
         detector.groupingWindow = config.tapGroupingWindow
-        detector.invertSides = config.invertSides
-        detector.sideBias = config.sideBias
+        detector.invertSides = isCalibrating ? false : config.invertSides
+        detector.sideBias = isCalibrating ? 0 : config.sideBias
         detector.ignoreWhileTyping = config.ignoreWhileTyping
-        detector.classifySides = config.layout == .sides
+        detector.classifySides = isCalibrating || config.layout == .sides
+        detector.splitOnSideChange = isCalibrating || config.hasDistinctSideActions(
+            bundleID: NSWorkspace.shared.frontmostApplication?.bundleIdentifier)
+    }
+
+    func beginCalibration() {
+        guard !isCalibrating else { return }
+        wasRunningBeforeCalibration = isRunning
+        isCalibrating = true
+        detector.resetSession()
+        apply(ConfigStore.shared.config)
+        if !isRunning { start() }
+    }
+
+    func resetCalibrationSamples() {
+        detector.resetSession()
+    }
+
+    func endCalibration() {
+        guard isCalibrating else { return }
+        detector.resetSession()
+        isCalibrating = false
+        apply(ConfigStore.shared.config)
+        if !wasRunningBeforeCalibration { stop() }
     }
 
     func start() {
@@ -70,7 +101,11 @@ final class GestureEngine: ObservableObject {
         if isRunning { stop() } else { start() }
     }
 
-    private func handle(_ gesture: DetectedGesture) {
+    func handle(_ gesture: DetectedGesture) {
+        if isCalibrating {
+            calibrationGestures.send(gesture)
+            return
+        }
         let config = ConfigStore.shared.config
         lastGesture = gesture
         flashToken &+= 1
